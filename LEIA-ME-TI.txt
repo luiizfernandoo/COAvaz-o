@@ -1,0 +1,30 @@
+CHECAGEM DE VAZÃO · COA — instruções para publicação
+
+O que é
+  Página estática (HTML + JS), sem servidor, sem banco de dados e sem login.
+  Os dados da planilha de máquinas já vêm dentro do index.html. Quando o usuário
+  carrega uma planilha nova, ela fica salva só no navegador dele (localStorage).
+
+Como publicar
+  1. Copiar a pasta inteira "checagem-vazao" para qualquer servidor web interno
+     (IIS, Apache, Nginx, SharePoint com arquivos estáticos, etc.).
+  2. Precisa ser servido em HTTPS para o app poder ser instalado
+     (exigência dos navegadores para manifest + service worker).
+  3. Garantir que .webmanifest seja servido como application/manifest+json
+     (no IIS: adicionar o MIME type ".webmanifest").
+  4. A leitura de planilhas novas usa a biblioteca SheetJS 0.18.5, carregada de
+     cdnjs.cloudflare.com. Se a rede interna bloquear esse endereço, baixe
+     https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js,
+     coloque o arquivo nesta pasta e troque no index.html o src do script
+     para "xlsx.full.min.js". O restante da ferramenta funciona sem ela.
+
+Como o usuário instala
+  Android / Chrome no PC: abrir o endereço > menu > "Instalar app".
+  iPhone (Safari): botão Compartilhar > "Adicionar à Tela de Início".
+  O ícone usado é o da pasta icons/.
+
+Arquivos
+  index.html              a ferramenta
+  manifest.webmanifest    nome e ícones do app
+  sw.js                   cache para abrir rápido / offline
+  icons/                  ícones 32, 180, 192, 512 px e SVG

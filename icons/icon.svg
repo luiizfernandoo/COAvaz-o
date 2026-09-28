@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <clipPath id="fruit"><circle cx="256" cy="276" r="150"/></clipPath>
+    <radialGradient id="g" cx="0.38" cy="0.32" r="0.8">
+      <stop offset="0" stop-color="#ffd35e"/>
+      <stop offset="1" stop-color="#f0a81c"/>
+    </radialGradient>
+  </defs>
+  <clipPath id="tile"><rect width="512" height="512" rx="112"/></clipPath>
+  <g clip-path="url(#tile)"><rect width="512" height="512" fill="#2a5208"/></g>
+  <!-- fruta -->
+  <circle cx="256" cy="276" r="150" fill="url(#g)"/>
+  <!-- faixas de rastro dentro da fruta: verde com uma falha cinza -->
+  <g clip-path="url(#fruit)">
+    <rect x="96" y="300" width="330" height="26" fill="#62be00"/>
+    <rect x="96" y="338" width="330" height="26" fill="#9aa39a"/>
+    <rect x="96" y="376" width="330" height="26" fill="#62be00"/>
+    <rect x="96" y="414" width="330" height="40" fill="#4e9a00"/>
+  </g>
+  <!-- folha e cabinho -->
+  <path d="M256 128 C 256 112, 258 100, 262 90" stroke="#655046" stroke-width="12" stroke-linecap="round" fill="none"/>
+  <path d="M262 104 C 300 64, 360 66, 384 86 C 356 128, 300 136, 262 104 Z" fill="#62be00"/>
+  <path d="M270 104 C 305 94, 338 90, 366 90" stroke="#2a5208" stroke-width="5" stroke-linecap="round" fill="none" opacity=".55"/>
+</svg>

@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Checagem de Vazão COA</title>
+<meta name="theme-color" content="#2a5208">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Vazão COA">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: barra superior verde institucional com faixa amarela; abaixo, duas colunas (entrada | resultado) que empilham no celular. Paleta: verde, amarelo-açafrão e marrom da marca */
+:root{
+  --brand:#62be00; --brand-deep:#2a5208; --saffron:#f4bc2d; --earth:#655046;
+  --bg:#f5f4f0; --surface:#ffffff; --line:#e4dfd8; --fg:#2b2420; --muted:#6e6158;
+  --accent:#3f7d00; --accent-hover:#356a00; --accent-fg:#ffffff; --accent-soft:#eef7e2;
+  --bar:#2a5208; --bar-fg:#ffffff; --bar-muted:#cfe3b8; --field:#fbfaf8;
+  --ok:#3f7d00; --ok-bg:#eef7e2; --warn:#8a5d00; --warn-bg:#fdf1d3; --off:#6e6158; --off-bg:#f0ece7;
+  --bubble:#e5f6d3; --bubble-fg:#2b2420;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#15130f; --surface:#1e1b17; --line:#35302a; --fg:#eee8e1; --muted:#b0a498;
+  --accent:#7cc62a; --accent-hover:#8fd640; --accent-fg:#11200a; --accent-soft:#233216;
+  --bar:#1b300a; --bar-fg:#f3f7ee; --bar-muted:#a9c98a; --field:#181612;
+  --ok:#8fd640; --ok-bg:#233216; --warn:#f4bc2d; --warn-bg:#3a2f14; --off:#b0a498; --off-bg:#28241f;
+  --bubble:#243d18; --bubble-fg:#eee8e1; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#15130f; --surface:#1e1b17; --line:#35302a; --fg:#eee8e1; --muted:#b0a498;
+  --accent:#7cc62a; --accent-hover:#8fd640; --accent-fg:#11200a; --accent-soft:#233216;
+  --bar:#1b300a; --bar-fg:#f3f7ee; --bar-muted:#a9c98a; --field:#181612;
+  --ok:#8fd640; --ok-bg:#233216; --warn:#f4bc2d; --warn-bg:#3a2f14; --off:#b0a498; --off-bg:#28241f;
+  --bubble:#243d18; --bubble-fg:#eee8e1; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--fg);font:15px/1.5 var(--sans)}
+.topbar{background:var(--bar);color:var(--bar-fg);border-bottom:4px solid var(--saffron)}
+.topbar-in{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:14px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 24px}
+.brandmark{display:flex;align-items:center;gap:12px}
+.logo{width:40px;height:40px;flex:none;border-radius:9px;box-shadow:0 0 0 1px rgba(255,255,255,.15)}
+.dot{width:34px;height:34px;border-radius:50%;background:var(--saffron);position:relative;flex:none}
+.dot::after{content:"";position:absolute;width:14px;height:9px;background:var(--brand);border-radius:0 100% 0 100%;top:-3px;right:1px;transform:rotate(-12deg)}
+.topbar h1{font-size:1.2rem;font-weight:600;margin:0;line-height:1.2}
+.topbar .unit{font-size:.78rem;color:var(--bar-muted);letter-spacing:.06em;text-transform:uppercase;margin:0}
+.dbinfo{font-size:.8rem;color:var(--bar-muted);text-align:right}
+@media (max-width:600px){.dbinfo{text-align:left}}
+.dbinfo b{color:var(--bar-fg);font-weight:600}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:20px 48px;display:flex;flex-direction:column;gap:18px}
+.intro{color:var(--muted);margin:0;max-width:75ch;font-size:.92rem}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;display:flex;flex-direction:column;min-width:0;box-shadow:0 1px 2px rgba(60,40,20,.05)}
+.panel-body{padding:18px;display:flex;flex-direction:column;gap:14px}
+.panel-body + .panel-head{border-top:1px solid var(--line)}
+.panel-head{display:flex;align-items:center;gap:10px;padding:12px 18px;border-bottom:1px solid var(--line)}
+.panel-head h2{font-size:.95rem;font-weight:600;margin:0}
+.step{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font:600 .75rem/1 var(--sans);background:var(--accent-soft);color:var(--accent);flex:none}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+label{display:flex;flex-direction:column;gap:5px;font-size:.8rem;font-weight:500;color:var(--muted);min-width:0}
+input,select,textarea{font:inherit;font-size:.93rem;color:var(--fg);background:var(--field);border:1px solid var(--line);border-radius:6px;padding:8px 10px;width:100%;font-weight:400}
+input:hover,select:hover,textarea:hover{border-color:var(--muted)}
+textarea{resize:vertical;min-height:70px;font-family:var(--mono);font-size:.9rem}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+button:focus-visible,.chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.hint{font-size:.8rem;color:var(--muted);margin:-6px 0 0}
+.chips{display:flex;flex-wrap:wrap;gap:6px;max-height:150px;overflow:auto;padding:2px}
+.chip{font:500 .8rem/1 var(--mono);border:1px solid var(--line);background:var(--field);color:var(--fg);border-radius:4px;padding:6px 9px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.chip:hover{border-color:var(--accent)}
+button{font:500 .88rem var(--sans);cursor:pointer;border-radius:6px;padding:8px 14px;border:1px solid var(--line);background:var(--surface);color:var(--fg)}
+button:hover{border-color:var(--muted)}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg);font-weight:600;padding:9px 18px}
+button.primary:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
+.actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.stat{border-radius:6px;padding:10px 12px;border-left:3px solid currentColor}
+.stat b{display:block;font:600 1.5rem/1.1 var(--sans);font-variant-numeric:tabular-nums}
+.stat span{font-size:.76rem;font-weight:500}
+.stat.ok{background:var(--ok-bg);color:var(--ok)} .stat.warn{background:var(--warn-bg);color:var(--warn)} .stat.off{background:var(--off-bg);color:var(--off)}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.86rem}
+th{text-align:left;font-size:.72rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);padding:6px 8px;border-bottom:1px solid var(--line);background:var(--field)}
+td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.pill{display:inline-block;font-size:.72rem;font-weight:600;border-radius:4px;padding:2px 7px;white-space:nowrap}
+.pill.ok{background:var(--ok-bg);color:var(--ok)} .pill.warn{background:var(--warn-bg);color:var(--warn)} .pill.off{background:var(--off-bg);color:var(--off)}
+.note{font-size:.76rem;color:var(--warn)}
+.bubble{background:var(--bubble);color:var(--bubble-fg);border-radius:8px 8px 8px 2px;padding:12px 14px;white-space:pre-wrap;word-break:break-word;font-size:.93rem;line-height:1.5}
+.empty{color:var(--muted);font-size:.88rem;border:1px dashed var(--line);border-radius:6px;padding:14px;background:var(--field)}
+.toast{font-size:.84rem;color:var(--ok);font-weight:500}
+details{font-size:.86rem} summary{cursor:pointer;font-weight:500;color:var(--accent)}
+details p{color:var(--muted);margin:.5em 0}
+footer{font-size:.76rem;color:var(--muted);text-align:center}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+
+<header class="topbar">
+  <div class="topbar-in">
+    <div class="brandmark">
+      <svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" aria-hidden="true">
+  <defs>
+    <clipPath id="lg-fruit"><circle cx="256" cy="276" r="150"/></clipPath>
+    <radialGradient id="lg-g" cx="0.38" cy="0.32" r="0.8">
+      <stop offset="0" stop-color="#ffd35e"/>
+      <stop offset="1" stop-color="#f0a81c"/>
+    </radialGradient>
+  </defs>
+  <clipPath id="lg-tile"><rect width="512" height="512" rx="112"/></clipPath>
+  <g clip-path="url(#lg-tile)"><rect width="512" height="512" fill="#2a5208"/></g>
+  
+  <circle cx="256" cy="276" r="150" fill="url(#lg-g)"/>
+  
+  <g clip-path="url(#lg-fruit)">
+    <rect x="96" y="300" width="330" height="26" fill="#62be00"/>
+    <rect x="96" y="338" width="330" height="26" fill="#9aa39a"/>
+    <rect x="96" y="376" width="330" height="26" fill="#62be00"/>
+    <rect x="96" y="414" width="330" height="40" fill="#4e9a00"/>
+  </g>
+  
+  <path d="M256 128 C 256 112, 258 100, 262 90" stroke="#655046" stroke-width="12" stroke-linecap="round" fill="none"/>
+  <path d="M262 104 C 300 64, 360 66, 384 86 C 356 128, 300 136, 262 104 Z" fill="#62be00"/>
+  <path d="M270 104 C 305 94, 338 90, 366 90" stroke="#2a5208" stroke-width="5" stroke-linecap="round" fill="none" opacity=".55"/>
+</svg>
+
+      <div>
+        <p class="unit">COA · Centro de Operações Agrícolas</p>
+        <h1>Checagem de Vazão · Pulverização</h1>
+      </div>
+    </div>
+    <div class="dbinfo" id="dbinfo"></div>
+  </div>
+</header>
+
+<div class="wrap">
+  <p class="intro">Quando o print do rastro tiver parte cinza (sem vazão), informe as frotas que passaram no cinza. A ferramenta confere na planilha quais têm Controlador + Sensor Ultrassônico e monta a mensagem para o WhatsApp.</p>
+
+  <div class="grid">
+    <section class="panel" aria-labelledby="h-op">
+      <div class="panel-head"><span class="step">1</span><h2 id="h-op">Dados da operação</h2></div>
+      <div class="panel-body">
+        <label for="opsel">Operação<select id="opsel"></select></label>
+        <label for="op" id="op-wrap" hidden>Nome da operação<input id="op" placeholder="000 PULVERIZAÇÃO ..."></label>
+        <div class="row">
+          <label for="reg">Regional<select id="reg"></select></label>
+          <label for="faz">Fazenda<select id="faz"></select></label>
+        </div>
+        <div class="row">
+          <label for="setor">Setor<input id="setor" placeholder="2"></label>
+          <label for="talhoes">Talhões<input id="talhoes" placeholder="206, 205, 204"></label>
+        </div>
+      </div>
+      <div class="panel-head"><span class="step">2</span><h2>Frotas do rastro cinza</h2></div>
+      <div class="panel-body">
+        <label for="frotas">Números das frotas<textarea id="frotas" placeholder="1900, 1901, 1954"></textarea></label>
+        <p class="hint">Separe por vírgula, espaço ou linha. Aceita o número curto (1900) ou o código completo (20401900).</p>
+        <div>
+          <p class="hint" style="margin:0 0 6px" id="chips-label">Tratores com tecnologia nesta fazenda (clique para adicionar):</p>
+          <div class="chips" id="chips"></div>
+        </div>
+        <div class="actions"><button id="clear" type="button">Limpar frotas</button></div>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="h-res">
+      <div class="panel-head"><span class="step">3</span><h2 id="h-res">Resultado da checagem</h2></div>
+      <div class="panel-body">
+        <div class="summary" id="summary"></div>
+        <div class="tbl-wrap" id="tbl"></div>
+      </div>
+      <div class="panel-head"><span class="step">4</span><h2>Mensagem para o WhatsApp</h2></div>
+      <div class="panel-body">
+        <div id="preview"></div>
+        <div class="actions">
+          <button class="primary" id="copy" type="button">Copiar mensagem</button>
+          <span class="toast" id="toast" role="status"></span>
+        </div>
+        <textarea id="fallback" hidden readonly></textarea>
+        <p class="hint" style="margin:0">Depois de colar no WhatsApp, anexe o print do rastro e marque o encarregado e os responsáveis com @.</p>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Planilha de máquinas</h2></div>
+    <div class="panel-body">
+      <p class="hint" style="margin:0">Quando a planilha "Máquinas Automação Pulverização" for atualizada, carregue a nova versão aqui. Ela fica salva neste navegador.</p>
+      <div class="actions">
+        <label for="file" style="flex-direction:row;align-items:center"><input id="file" type="file" accept=".xlsx,.xls,.csv" style="width:auto"></label>
+        <button id="reset" type="button">Voltar para a planilha original</button>
+        <span class="toast" id="filemsg" role="status"></span>
+      </div>
+      <details>
+        <summary>Regra usada na checagem</summary>
+        <p><b>Cobrar</b>: frota cadastrada com tecnologia "Controlador + Sensor Ultrassônico" e status ativo. Essas entram na mensagem.</p>
+        <p><b>Não cobrar</b>: frota com outra tecnologia (ex.: Seletiva), frota inativada ou frota que não está na planilha.</p>
+      </details>
+    </div>
+  </section>
+  <footer>Ferramenta interna do COA · uso operacional</footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+const BASE = [["20402022","Agua Boa","Seletiva","Inativada","T"],["20402030","Agua Boa","Seletiva","Inativada","T"],["21004261","Agua boa","Seletiva","Ativada","T"],["20402033","Agua boa","Seletiva","Ativada","T"],["20402045","Agua boa","Seletiva","Ativada","T"],["20401978","Agua Sumida","Controlador + Sensor Ultrassônico","Ativada","T"],["20401979","Agua Sumida","Controlador + Sensor Ultrassônico","Ativada","T"],["20401789","California","Controlador + Sensor Ultrassônico","Ativada","T"],["20401792","California","Controlador + Sensor Ultrassônico","Ativada","T"],["20401976","California","Controlador + Sensor Ultrassônico","Ativada","T"],["20401977","California","Controlador + Sensor Ultrassônico","Ativada","T"],["20402018","California","Controlador + Sensor Ultrassônico","Ativada","T"],["20401667","Constância","Controlador + Sensor Ultrassônico","Ativada","T"],["20401727","Constância","Controlador + Sensor Ultrassônico","Ativada","T"],["21004260","Constância","Seletiva","Ativada","T"],["20401923","Constância","Controlador + Sensor Ultrassônico","Ativada","T"],["20401925","Constância","Controlador + Sensor Ultrassônico","Ativada","T"],["20401836","Constância","Controlador + Sensor Ultrassônico","Ativada","T"],["20401837","Constância","Controlador + Sensor Ultrassônico","Ativada","T"],["20401835","Constância","Controlador + Sensor Ultrassônico","Ativada","T"],["20401918","Constância","Controlador + Sensor Ultrassônico","Ativada","T"],["20401916","Constância","Controlador + Sensor Ultrassônico","Ativada","T"],["20401777","Constância","Controlador + Sensor Ultrassônico","Ativada","T"],["20401917","Constância","Controlador + Sensor Ultrassônico","Ativada","T"],["20401745","Constância","Controlador + Sensor Ultrassônico","Ativada","T"],["20401735","Constância","Controlador + Sensor Ultrassônico","Ativada","T"],["20401687","Emu","Controlador + Sensor Ultrassônico","Ativada","T"],["20401689","Emu","Controlador + Sensor Ultrassônico","Ativada","T"],["20401704","Emu","Controlador + Sensor Ultrassônico","Ativada","T"],["20401962","Emu","Controlador + Sensor Ultrassônico","Ativada","T"],["20401699","Emu","Controlador + Sensor Ultrassônico","Ativada","T"],["20401675","Emu","Controlador + Sensor Ultrassônico","Ativada","T"],["20401676","Emu","Controlador + Sensor Ultrassônico","Ativada","T"],["20401686","Emu","Controlador + Sensor Ultrassônico","Ativada","T"],["20401688","Emu","Controlador + Sensor Ultrassônico","Ativada","T"],["21003752","Entre Rios","Seletiva","Ativada","T"],["21004356","Entre Rios","Seletiva","Ativada","T"],["20401954","Entre Rios","Controlador + Sensor Ultrassônico","Ativada","T"],["20401802","Entre Rios","Controlador + Sensor Ultrassônico","Ativada","T"],["20401613","Entre Rios","Controlador + Sensor Ultrassônico","Ativada","T"],["20401612","Entre Rios","Controlador + Sensor Ultrassônico","Ativada","T"],["20401636","Entre Rios","Controlador + Sensor Ultrassônico","Ativada","T"],["20401880","Entre Rios","Controlador + Sensor Ultrassônico","Ativada","T"],["20401911","Entre Rios","Controlador + Sensor Ultrassônico","Ativada","T"],["20401899","Entre Rios","Controlador + Sensor Ultrassônico","Ativada","T"],["20401912","Entre Rios","Controlador + Sensor Ultrassônico","Ativada","T"],["20401840","Entre Rios","Controlador + Sensor Ultrassônico","Ativada","T"],["20401637","Entre Rios","Controlador + Sensor Ultrassônico","Ativada","T"],["20401851","Entre Rios","Controlador + Sensor Ultrassônico","Ativada","T"],["20401579","Entre Rios","Controlador + Sensor Ultrassônico","Ativada","T"],["20401801","Entre Rios","Controlador + Sensor Ultrassônico","Ativada","T"],["20401865","Entre Rios","Controlador + Sensor Ultrassônico","Ativada","T"],["20401900","Entre Rios","Controlador + Sensor Ultrassônico","Ativada","T"],["20401901","Entre Rios","Controlador + Sensor Ultrassônico","Ativada","T"],["20401953","Entre Rios","Controlador + Sensor Ultrassônico","Ativada","T"],["20401955","Entre Rios","Controlador + Sensor Ultrassônico","Ativada","T"],["20401838","Entre Rios","Controlador + Sensor Ultrassônico","Ativada","T"],["20401841","Entre Rios","Controlador + Sensor Ultrassônico","Ativada","T"],["20401839","Entre Rios","Controlador + Sensor Ultrassônico","Ativada","T"],["20401903","Entre Rios","Controlador + Sensor Ultrassônico","Ativada","T"],["20401726","Graminha","Controlador + Sensor Ultrassônico","Ativada","T"],["20401770","Umuarama","Controlador + Sensor Ultrassônico","Ativada","T"],["20401728","Graminha","Controlador + Sensor Ultrassônico","Ativada","T"],["20401729","Monte verde","Controlador + Sensor Ultrassônico","Ativada","T"],["20401648","Monte verde","Controlador + Sensor Ultrassônico","Ativada","T"],["20401674","Monte verde","Controlador + Sensor Ultrassônico","Ativada","T"],["20401663","Monte verde","Controlador + Sensor Ultrassônico","Ativada","T"],["20401750","Monte verde","Controlador + Sensor Ultrassônico","Ativada","T"],["20401747","Monte verde","Controlador + Sensor Ultrassônico","Ativada","T"],["20401948","Monte verde","Controlador + Sensor Ultrassônico","Ativada","T"],["20401650","Monte verde","Controlador + Sensor Ultrassônico","Ativada","T"],["20401556","Monte verde","Controlador + Sensor Ultrassônico","Ativada","T"],["20401815","Monte verde","Controlador + Sensor Ultrassônico","Ativada","T"],["20401652","Monte verde","Controlador + Sensor Ultrassônico","Ativada","T"],["20401731","Monte verde","Controlador + Sensor Ultrassônico","Ativada","T"],["20401817","Monte verde","Controlador + Sensor Ultrassônico","Ativada","T"],["20401646","Monte verde","Controlador + Sensor Ultrassônico","Ativada","T"],["20401947","Monte verde","Controlador + Sensor Ultrassônico","Ativada","T"],["20401749","Monte verde","Controlador + Sensor Ultrassônico","Ativada","T"],["20401653","Monte verde","Controlador + Sensor Ultrassônico","Ativada","T"],["20401732","Monte verde","Controlador + Sensor Ultrassônico","Ativada","T"],["20401600","Monte verde","Controlador + Sensor Ultrassônico","Ativada","T"],["20401816","Monte verde","Controlador + Sensor Ultrassônico","Ativada","T"],["20401645","Monte verde","Controlador + Sensor Ultrassônico","Ativada","T"],["20401818","Monte verde","Controlador + Sensor Ultrassônico","Ativada","T"],["20401795","Monte verde","Controlador + Sensor Ultrassônico","Ativada","T"],["20401796","Monte verde","Controlador + Sensor Ultrassônico","Ativada","T"],["20401673","Monte verde","Controlador + Sensor Ultrassônico","Ativada","T"],["20401651","Monte verde","Controlador + Sensor Ultrassônico","Ativada","T"],["20401647","Monte verde","Controlador + Sensor Ultrassônico","Ativada","T"],["20401649","Monte verde","Controlador + Sensor Ultrassônico","Ativada","T"],["20401557","Monte verde","Controlador + Sensor Ultrassônico","Ativada","T"],["20401733","Monte verde","Controlador + Sensor Ultrassônico","Ativada","T"],["20401832","Muriti","Controlador + Sensor Ultrassônico","Ativada","T"],["20401974","Muriti","Controlador + Sensor Ultrassônico","Ativada","T"],["20401975","Muriti","Controlador + Sensor Ultrassônico","Ativada","T"],["20401710","Nova Era","Controlador + Sensor Ultrassônico","Ativada","T"],["20401711","Nova Era","Controlador + Sensor Ultrassônico","Ativada","T"],["20401718","Nova Era","Controlador + Sensor Ultrassônico","Ativada","T"],["20401764","Nova Era","Controlador + Sensor Ultrassônico","Ativada","T"],["20401767","Nova Era","Controlador + Sensor Ultrassônico","Ativada","T"],["20401867","Nova Era","Controlador + Sensor Ultrassônico","Ativada","T"],["20401766","Nova Era","Controlador + Sensor Ultrassônico","Ativada","T"],["20401858","Nova Trento","Controlador + Sensor Ultrassônico","Ativada","T"],["20401854","Nova Trento","Controlador + Sensor Ultrassônico","Ativada","T"],["20401855","Nova Trento","Controlador + Sensor Ultrassônico","Ativada","T"],["20401857","Nova Trento","Controlador + Sensor Ultrassônico","Ativada","T"],["20401856","Nova Trento","Controlador + Sensor Ultrassônico","Ativada","T"],["20401781","Oriçanga","Controlador + Sensor Ultrassônico","Ativada","T"],["20401761","Oriçanga","Controlador + Sensor Ultrassônico","Ativada","T"],["20401763","Oriçanga","Controlador + Sensor Ultrassônico","Ativada","T"],["20401768","Oriçanga","Controlador + Sensor Ultrassônico","Ativada","T"],["20401942","Palmeiras","Controlador + Sensor Ultrassônico","Ativada","T"],["20401875","Palmeiras","Controlador + Sensor Ultrassônico","Ativada","T"],["20401874","Palmeiras","Controlador + Sensor Ultrassônico","Ativada","T"],["20401873","Palmeiras","Controlador + Sensor Ultrassônico","Ativada","T"],["20401779","Palmeiras","Controlador + Sensor Ultrassônico","Ativada","T"],["20401778","Palmeiras","Controlador + Sensor Ultrassônico","Ativada","T"],["20401694","Quatrimas","Controlador + Sensor Ultrassônico","Ativada","T"],["20401984","Quatrimas","Controlador + Sensor Ultrassônico","Ativada","T"],["20401982","Quatrimas","Controlador + Sensor Ultrassônico","Ativada","T"],["20401702","Quatrimas","Controlador + Sensor Ultrassônico","Ativada","T"],["20401695","Quatrimas","Controlador + Sensor Ultrassônico","Ativada","T"],["20401983","Quatrimas","Controlador + Sensor Ultrassônico","Ativada","T"],["20401950","Quatrimas","Controlador + Sensor Ultrassônico","Ativada","T"],["20401714","Rancho Grande","Controlador + Sensor Ultrassônico","Ativada","T"],["20401715","Rancho Grande","Controlador + Sensor Ultrassônico","Ativada","T"],["20401716","Rancho Grande","Controlador + Sensor Ultrassônico","Ativada","T"],["20401717","Rancho Grande","Controlador + Sensor Ultrassônico","Ativada","T"],["20401951","Rancho Grande","Controlador + Sensor Ultrassônico","Ativada","T"],["20401692","Redenção","Controlador + Sensor Ultrassônico","Ativada","T"],["20401693","Redenção","Controlador + Sensor Ultrassônico","Ativada","T"],["20401760","Redenção","Controlador + Sensor Ultrassônico","Ativada","T"],["20401930","Redenção","Controlador + Sensor Ultrassônico","Ativada","T"],["20401887","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401878","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401879","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401943","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401890","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401931","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401888","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401894","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401883","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401893","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401891","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401884","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401831","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401938","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401937","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401780","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401933","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401822","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401819","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401897","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401936","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401934","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401935","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401820","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401932","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401826","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401827","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401828","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401829","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401939","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401940","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401885","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401886","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401889","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401892","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401895","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401896","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401830","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401898","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401870","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20401941","Rio Pardo","Controlador + Sensor Ultrassônico","Ativada","T"],["20402034","San pablo","Seletiva","Ativada","T"],["20401734","Santa Monica","Controlador + Sensor Ultrassônico","Ativada","T"],["20401769","Santa Monica","Controlador + Sensor Ultrassônico","Ativada","T"],["20401725","Santa Terezinha","Controlador + Sensor Ultrassônico","Ativada","T"],["20401724","Santa Terezinha","Controlador + Sensor Ultrassônico","Ativada","T"],["20401872","Santa Terezinha","Controlador + Sensor Ultrassônico","Ativada","T"],["20401850","Santa Terezinha","Controlador + Sensor Ultrassônico","Ativada","T"],["20401871","Santa Terezinha","Controlador + Sensor Ultrassônico","Ativada","T"],["20401849","Santa Terezinha","Controlador + Sensor Ultrassônico","Ativada","T"],["20401814","São Carlos e Maringá","Controlador + Sensor Ultrassônico","Ativada","T"],["20401811","São Carlos e Maringá","Controlador + Sensor Ultrassônico","Ativada","T"],["20401813","São Carlos e Maringá","Controlador + Sensor Ultrassônico","Ativada","T"],["20401805","São Carlos e Maringá","Controlador + Sensor Ultrassônico","Ativada","T"],["20401808","São Carlos e Maringá","Controlador + Sensor Ultrassônico","Ativada","T"],["20401869","São Carlos e Maringá","Controlador + Sensor Ultrassônico","Ativada","T"],["20401904","São Carlos e Maringá","Controlador + Sensor Ultrassônico","Ativada","T"],["20401812","São Carlos e Maringá","Controlador + Sensor Ultrassônico","Ativada","T"],["20401788","São Carlos e Maringá","Controlador + Sensor Ultrassônico","Ativada","T"],["20401868","São Carlos e Maringá","Controlador + Sensor Ultrassônico","Ativada","T"],["20401959","São Carlos e Maringá","Controlador + Sensor Ultrassônico","Ativada","T"],["20401799","São Carlos e Maringá","Controlador + Sensor Ultrassônico","Ativada","T"],["20401804","São Carlos e Maringá","Controlador + Sensor Ultrassônico","Ativada","T"],["20401842","São João","Controlador + Sensor Ultrassônico","Ativada","T"],["20401848","São João","Controlador + Sensor Ultrassônico","Ativada","T"],["20401584","São João","Controlador + Sensor Ultrassônico","Ativada","T"],["20401583","São João","Controlador + Sensor Ultrassônico","Ativada","T"],["20401844","São João","Controlador + Sensor Ultrassônico","Ativada","T"],["20401926","São João","Controlador + Sensor Ultrassônico","Ativada","T"],["20401915","São João","Controlador + Sensor Ultrassônico","Ativada","T"],["20401843","São João","Controlador + Sensor Ultrassônico","Ativada","T"],["20401697","São João","Controlador + Sensor Ultrassônico","Ativada","T"],["20401966","São João","Controlador + Sensor Ultrassônico","Ativada","T"],["20401968","São João","Controlador + Sensor Ultrassônico","Ativada","T"],["20401967","São João","Controlador + Sensor Ultrassônico","Ativada","T"],["20401698","São João","Controlador + Sensor Ultrassônico","Ativada","T"],["20401927","São João","Controlador + Sensor Ultrassônico","Ativada","T"],["20401929","São João","Controlador + Sensor Ultrassônico","Ativada","T"],["20401970","São João","Controlador + Sensor Ultrassônico","Ativada","T"],["20401961","Tubunas","Controlador + Sensor Ultrassônico","Ativada","T"],["20401960","Tubunas","Controlador + Sensor Ultrassônico","Ativada","T"],["20401672","Tubunas","Controlador + Sensor Ultrassônico","Ativada","T"],["20401682","Tubunas","Controlador + Sensor Ultrassônico","Ativada","T"],["20401683","Tubunas","Controlador + Sensor Ultrassônico","Ativada","T"],["20401655","Umuarama","Controlador + Sensor Ultrassônico","Ativada","T"],["20401659","Umuarama","Controlador + Sensor Ultrassônico","Ativada","T"],["20401664","Umuarama","Controlador + Sensor Ultrassônico","Ativada","T"],["20401944","Umuarama","Controlador + Sensor Ultrassônico","Ativada","T"],["20401660","Umuarama","Controlador + Sensor Ultrassônico","Ativada","T"],["20401794","Umuarama","Controlador + Sensor Ultrassônico","Ativada","T"],["20401570","Umuarama","Controlador + Sensor Ultrassônico","Ativada","T"],["20401573","Umuarama","Controlador + Sensor Ultrassônico","Ativada","T"],["20401656","Umuarama","Controlador + Sensor Ultrassônico","Ativada","T"],["20401657","Umuarama","Controlador + Sensor Ultrassônico","Ativada","T"],["20401658","Umuarama","Controlador + Sensor Ultrassônico","Ativada","T"],["20401661","Umuarama","Controlador + Sensor Ultrassônico","Ativada","T"],["20401607","Umuarama","Controlador + Sensor Ultrassônico","Ativada","T"],["20401662","Umuarama","Controlador + Sensor Ultrassônico","Ativada","T"],["20401824","Umuarama","Controlador + Sensor Ultrassônico","Ativada","T"],["20401723","Umuarama","Controlador + Sensor Ultrassônico","Ativada","T"],["20401981","Umuarama","Controlador + Sensor Ultrassônico","Ativada","T"],["20401572","Umuarama","Controlador + Sensor Ultrassônico","Ativada","T"],["20401671","Umuarama","Controlador + Sensor Ultrassônico","Ativada","T"],["20401685","Umuarama","Controlador + Sensor Ultrassônico","Ativada","T"],["20401756","Ventura","Controlador + Sensor Ultrassônico","Ativada","T"],["20401882","Ventura","Controlador + Sensor Ultrassônico","Ativada","T"],["20401708","Ventura","Controlador + Sensor Ultrassônico","Ativada","T"],["20401706","Ventura","Controlador + Sensor Ultrassônico","Ativada","T"],["20401709","Ventura","Controlador + Sensor Ultrassônico","Ativada","T"],["20401952","Ventura","Controlador + Sensor Ultrassônico","Ativada","T"],["20401721","Santa Terezinha","Controlador + Sensor Ultrassônico","Ativada","T"],["21004357","São carlos","Seletiva","Ativada","T"],["20402039","San pablo","Seletiva","Ativada","T"],["20402043","Lageado","Seletiva","Ativada","T"],["20402037","Lageado","Seletiva","Ativada","T"],["20401825","Umuarama","Controlador + Sensor Ultrassônico","Ativada","T"],["20801206","Agua sumida","Controlador + Sensor Ultrassônico","","I"],["20801252","Agua sumida","Controlador + Sensor Ultrassônico","","I"],["20801299","Agua sumida","Controlador + Sensor Ultrassônico","","I"],["20801380","Agua sumida","Controlador + Sensor Ultrassônico","","I"],["20801348","California","Controlador + Sensor Ultrassônico","","I"],["20801300","California","Controlador + Sensor Ultrassônico","","I"],["20801439","California","Controlador + Sensor Ultrassônico","","I"],["20801440","California","Controlador + Sensor Ultrassônico","","I"],["20801484","California","Controlador + Sensor Ultrassônico","","I"],["20800771","California","Controlador + Sensor Ultrassônico","","I"],["20801161","Constância","Controlador + Sensor Ultrassônico","","I"],["20801293","Constância","Controlador + Sensor Ultrassônico","","I"],["20801302","Constância","Controlador + Sensor Ultrassônico","","I"],["20801394","Constância","Controlador + Sensor Ultrassônico","","I"],["20801434","Constância","Controlador + Sensor Ultrassônico","","I"],["20801438","Constância","Controlador + Sensor Ultrassônico","","I"],["20801446","Constância","Controlador + Sensor Ultrassônico","","I"],["20801474","Constância","Controlador + Sensor Ultrassônico","","I"],["20801475","Constância","Controlador + Sensor Ultrassônico","","I"],["20801333","Constância","Controlador + Sensor Ultrassônico","","I"],["20801481","Emu","Controlador + Sensor Ultrassônico","","I"],["20801486","Emu","Controlador + Sensor Ultrassônico","","I"],["20801271","Emu","Controlador + Sensor Ultrassônico","","I"],["20801317","Emu","Controlador + Sensor Ultrassônico","","I"],["20801332","Emu","Controlador + Sensor Ultrassônico","","I"],["20801359","Emu","Controlador + Sensor Ultrassônico","","I"],["20801501","Emu","Controlador + Sensor Ultrassônico","","I"],["20801224","Emu","Controlador + Sensor Ultrassônico","","I"],["20801281","Entre Rios","Controlador + Sensor Ultrassônico","","I"],["20801284","Entre Rios","Controlador + Sensor Ultrassônico","","I"],["20801316","Entre Rios","Controlador + Sensor Ultrassônico","","I"],["20801321","Entre Rios","Controlador + Sensor Ultrassônico","","I"],["20801358","Entre Rios","Controlador + Sensor Ultrassônico","","I"],["20801363","Entre Rios","Controlador + Sensor Ultrassônico","","I"],["20801364","Entre Rios","Controlador + Sensor Ultrassônico","","I"],["20801365","Entre Rios","Controlador + Sensor Ultrassônico","","I"],["20801409","Entre Rios","Controlador + Sensor Ultrassônico","","I"],["20801412","Entre Rios","Controlador + Sensor Ultrassônico","","I"],["20801429","Entre Rios","Controlador + Sensor Ultrassônico","","I"],["20801430","Entre Rios","Controlador + Sensor Ultrassônico","","I"],["20801448","Entre Rios","Controlador + Sensor Ultrassônico","","I"],["20801462","Entre Rios","Controlador + Sensor Ultrassônico","","I"],["20801463","Entre Rios","Controlador + Sensor Ultrassônico","","I"],["20801470","Entre Rios","Controlador + Sensor Ultrassônico","","I"],["20801471","Entre Rios","Controlador + Sensor Ultrassônico","","I"],["20801487","Entre Rios","Controlador + Sensor Ultrassônico","","I"],["20801491","Entre Rios","Controlador + Sensor Ultrassônico","","I"],["20801502","Entre Rios","Controlador + Sensor Ultrassônico","","I"],["20801503","Entre Rios","Controlador + Sensor Ultrassônico","","I"],["20801493","Entre Rios","Controlador + Sensor Ultrassônico","","I"],["20801496","Entre Rios","Controlador + Sensor Ultrassônico","","I"],["20801507","Graminha","Controlador + Sensor Ultrassônico","","I"],["20801517","Graminha","Controlador + Sensor Ultrassônico","","I"],["20801469","Graminha","Controlador + Sensor Ultrassônico","","I"],["20801288","Graminha","Controlador + Sensor Ultrassônico","","I"],["20801289","Maringá","Controlador + Sensor Ultrassônico","","I"],["20801416","Maringá","Controlador + Sensor Ultrassônico","","I"],["20801426","Maringá","Controlador + Sensor Ultrassônico","","I"],["20801428","Maringá","Controlador + Sensor Ultrassônico","","I"],["20801464","Maringá","Controlador + Sensor Ultrassônico","","I"],["20801468","Maringá","Controlador + Sensor Ultrassônico","","I"],["20800848","Maringá","Controlador + Sensor Ultrassônico","","I"],["20801128","Maringá","Controlador + Sensor Ultrassônico","","I"],["20801198","Monte Verde","Controlador + Sensor Ultrassônico","","I"],["20801199","Monte Verde","Controlador + Sensor Ultrassônico","","I"],["20801200","Monte Verde","Controlador + Sensor Ultrassônico","","I"],["20801250","Monte Verde","Controlador + Sensor Ultrassônico","","I"],["20801277","Monte Verde","Controlador + Sensor Ultrassônico","","I"],["20801298","Monte Verde","Controlador + Sensor Ultrassônico","","I"],["20801309","Monte Verde","Controlador + Sensor Ultrassônico","","I"],["20801335","Monte Verde","Controlador + Sensor Ultrassônico","","I"],["20801354","Monte Verde","Controlador + Sensor Ultrassônico","","I"],["20801368","Monte Verde","Controlador + Sensor Ultrassônico","","I"],["20801384","Monte Verde","Controlador + Sensor Ultrassônico","","I"],["20801423","Monte Verde","Controlador + Sensor Ultrassônico","","I"],["20801456","Monte Verde","Controlador + Sensor Ultrassônico","","I"],["20801201","Monte Verde","Controlador + Sensor Ultrassônico","","I"],["20801315","Monte Verde","Controlador + Sensor Ultrassônico","","I"],["20801334","Monte Verde","Controlador + Sensor Ultrassônico","","I"],["20801403","Monte Verde","Controlador + Sensor Ultrassônico","","I"],["20801305","Monte Verde","Controlador + Sensor Ultrassônico","","I"],["20801304","Monte Verde","Controlador + Sensor Ultrassônico","","I"],["20801408","Monte Verde","Controlador + Sensor Ultrassônico","","I"],["20801490","Muriti","Controlador + Sensor Ultrassônico","","I"],["20801489","Muriti","Controlador + Sensor Ultrassônico","","I"],["20800860","Muriti","Controlador + Sensor Ultrassônico","","I"],["20801147","Muriti","Controlador + Sensor Ultrassônico","","I"],["20801226","Nova Era","Controlador + Sensor Ultrassônico","","I"],["20801344","Nova Era","Controlador + Sensor Ultrassônico","","I"],["20801352","Nova Era","Controlador + Sensor Ultrassônico","","I"],["20801372","Nova Era","Controlador + Sensor Ultrassônico","","I"],["20801148","Nova Era","Controlador + Sensor Ultrassônico","","I"],["20801374","Nova Era","Controlador + Sensor Ultrassônico","","I"],["20801375","Nova Era","Controlador + Sensor Ultrassônico","","I"],["20800859","Nova Trento","Controlador + Sensor Ultrassônico","","I"],["20801350","Nova Trento","Controlador + Sensor Ultrassônico","","I"],["20801366","Nova Trento","Controlador + Sensor Ultrassônico","","I"],["20801407","Nova Trento","Controlador + Sensor Ultrassônico","","I"],["20801485","Oriçanga","Controlador + Sensor Ultrassônico","","I"],["20801126","Oriçanga","Controlador + Sensor Ultrassônico","","I"],["20801190","Oriçanga","Controlador + Sensor Ultrassônico","","I"],["20801262","Oriçanga","Controlador + Sensor Ultrassônico","","I"],["20801263","Palmeiras","Controlador + Sensor Ultrassônico","","I"],["20801265","Palmeiras","Controlador + Sensor Ultrassônico","","I"],["20801792","Palmeiras","Controlador + Sensor Ultrassônico","","I"],["20801357","Palmeiras","Controlador + Sensor Ultrassônico","","I"],["20801404","Palmeiras","Controlador + Sensor Ultrassônico","","I"],["20801208","Palmeiras","Controlador + Sensor Ultrassônico","","I"],["20801275","Quatrirmas","Controlador + Sensor Ultrassônico","","I"],["20801453","Quatrirmas","Controlador + Sensor Ultrassônico","","I"],["20801454","Quatrirmas","Controlador + Sensor Ultrassônico","","I"],["20801512","Quatrirmas","Controlador + Sensor Ultrassônico","","I"],["20801514","Quatrirmas","Controlador + Sensor Ultrassônico","","I"],["20801180","Quatrirmas","Controlador + Sensor Ultrassônico","","I"],["20801210","Quatrirmas","Controlador + Sensor Ultrassônico","","I"],["20801273","Quatrirmas","Controlador + Sensor Ultrassônico","","I"],["20801340","Rancho grande","Controlador + Sensor Ultrassônico","","I"],["20801382","Rancho grande","Controlador + Sensor Ultrassônico","","I"],["20801459","Rancho grande","Controlador + Sensor Ultrassônico","","I"],["20801139","Rancho grande","Controlador + Sensor Ultrassônico","","I"],["20801257","Rancho grande","Controlador + Sensor Ultrassônico","","I"],["20801258","Rancho grande","Controlador + Sensor Ultrassônico","","I"],["20801342","Redenção","Controlador + Sensor Ultrassônico","","I"],["20800788","Redenção","Controlador + Sensor Ultrassônico","","I"],["20800789","Redenção","Controlador + Sensor Ultrassônico","","I"],["20800790","Redenção","Controlador + Sensor Ultrassônico","","I"],["20800794","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20800796","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20800853","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20800856","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801107","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801108","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801109","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801113","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801125","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801129","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801134","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801135","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801136","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801156","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801181","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801186","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801205","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801209","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801213","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801214","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801223","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801264","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801325","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801326","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801327","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801328","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801329","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801356","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801361","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801362","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801388","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801389","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801390","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801391","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801396","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801397","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801398","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801399","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801451","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801452","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801513","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801413","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801494","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20801508","Rio Pardo","Controlador + Sensor Ultrassônico","","I"],["20800839","Santa monica","Controlador + Sensor Ultrassônico","","I"],["20801143","Santa monica","Controlador + Sensor Ultrassônico","","I"],["20801189","Santa monica","Controlador + Sensor Ultrassônico","","I"],["20801401","Santa terezinha","Controlador + Sensor Ultrassônico","","I"],["20801436","Santa terezinha","Controlador + Sensor Ultrassônico","","I"],["20801477","Santa terezinha","Controlador + Sensor Ultrassônico","","I"],["20800797","Santa terezinha","Controlador + Sensor Ultrassônico","","I"],["20801145","Santa terezinha","Controlador + Sensor Ultrassônico","","I"],["20801235","Santa terezinha","Controlador + Sensor Ultrassônico","","I"],["20801346","São Carlos","Controlador + Sensor Ultrassônico","","I"],["20801418","São Carlos","Controlador + Sensor Ultrassônico","","I"],["20801151","São Carlos","Controlador + Sensor Ultrassônico","","I"],["20801152","São Carlos","Controlador + Sensor Ultrassônico","","I"],["20801267","São Carlos","Controlador + Sensor Ultrassônico","","I"],["20801268","São João","Controlador + Sensor Ultrassônico","","I"],["20801295","São João","Controlador + Sensor Ultrassônico","","I"],["20801296","São João","Controlador + Sensor Ultrassônico","","I"],["20801306","São João","Controlador + Sensor Ultrassônico","","I"],["20801347","São João","Controlador + Sensor Ultrassônico","","I"],["20801395","São João","Controlador + Sensor Ultrassônico","","I"],["20801435","São João","Controlador + Sensor Ultrassônico","","I"],["20801441","São João","Controlador + Sensor Ultrassônico","","I"],["20801443","São João","Controlador + Sensor Ultrassônico","","I"],["20801473","São João","Controlador + Sensor Ultrassônico","","I"],["20801476","São João","Controlador + Sensor Ultrassônico","","I"],["20801479","São João","Controlador + Sensor Ultrassônico","","I"],["20801480","São João","Controlador + Sensor Ultrassônico","","I"],["20801127","São João","Controlador + Sensor Ultrassônico","","I"],["20801272","São João","Controlador + Sensor Ultrassônico","","I"],["20801415","São João","Controlador + Sensor Ultrassônico","","I"],["20801449","Tubunas","Controlador + Sensor Ultrassônico","","I"],["20801509","Tubunas","Controlador + Sensor Ultrassônico","","I"],["20801467","Tubunas","Controlador + Sensor Ultrassônico","","I"],["20800830","Tubunas","Controlador + Sensor Ultrassônico","","I"],["20801336","Tubunas","Controlador + Sensor Ultrassônico","","I"],["20800871","Umuarama","Controlador + Sensor Ultrassônico","","I"],["20800828","Umuarama","Controlador + Sensor Ultrassônico","","I"],["20801506","Umuarama","Controlador + Sensor Ultrassônico","","I"],["20800821","Umuarama","Controlador + Sensor Ultrassônico","","I"],["20801402","Umuarama","Controlador + Sensor Ultrassônico","","I"],["20801370","Umuarama","Controlador + Sensor Ultrassônico","","I"],["20801482","Umuarama","Controlador + Sensor Ultrassônico","","I"],["20801505","Umuarama","Controlador + Sensor Ultrassônico","","I"],["20801131","Umuarama","Controlador + Sensor Ultrassônico","","I"],["20801483","Umuarama","Controlador + Sensor Ultrassônico","","I"],["20801387","Umuarama","Controlador + Sensor Ultrassônico","","I"],["20801504","Umuarama","Controlador + Sensor Ultrassônico","","I"],["20801311","Umuarama","Controlador + Sensor Ultrassônico","","I"],["20801386","Umuarama","Controlador + Sensor Ultrassônico","","I"],["20801457","Umuarama","Controlador + Sensor Ultrassônico","","I"],["20800869","Umuarama","Controlador + Sensor Ultrassônico","","I"],["20801260","Umuarama","Controlador + Sensor Ultrassônico","","I"],["20801192","Ventura","Controlador + Sensor Ultrassônico","","I"],["20801229","Ventura","Controlador + Sensor Ultrassônico","","I"],["20801274","Ventura","Controlador + Sensor Ultrassônico","","I"],["20801330","Ventura","Controlador + Sensor Ultrassônico","","I"],["20801379","Ventura","Controlador + Sensor Ultrassônico","","I"],["20801488","Ventura","Controlador + Sensor Ultrassônico","","I"],["20801516","Graminha","Controlador + Sensor Ultrassônico","","I"]];
+const BASE_LABEL = "planilha original (set/2026)";
+const $ = id => document.getElementById(id);
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v==null ? d : JSON.parse(v); }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){} }
+};
+const norm = s => String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/\s+/g," ").trim();
+
+let DB = BASE, DB_LABEL = BASE_LABEL;
+const saved = store.get("coa_db", null);
+if (saved && Array.isArray(saved.rows) && saved.rows.length){ DB = saved.rows; DB_LABEL = saved.label; }
+
+function titleCase(s){ return s.toLowerCase().replace(/(^|\s)(\p{L})/gu,(m,a,b)=>a+b.toUpperCase()).replace(/\b(E|De|Do|Da)\b/g,w=>w.toLowerCase()); }
+
+const OPS = [
+  "460 PULVERIZAÇÃO LEPROSE",
+  "600 PULVERIZAÇÃO GREENING",
+  "630 PULVERIZAÇÃO COLLETOTRICHUM",
+  "620 PULVERIZAÇÃO PINTA PRETA",
+  "1080 PULVERIZAÇÃO INSETICIDA ATOPROPELIDIO"
+];
+const OUTRA = "Outra fazenda";
+const REGIONAIS = {
+  "Sul": ["Rio Pardo","Palmeiras","Santa Teresinha","Rancho Grande","Tubunas"],
+  "Extremo Sul": ["Monte Verde","Umuarama","Redenção","Quatrirmas","Água Sumida","Graminha","Santa Monica",OUTRA],
+  "Norte": ["Constância","São João","São Vicente","Califórnia","Muriti","Rio Cortado","Água Boa",OUTRA],
+  "Centro": ["Nova Trento","Nova Era","Entre Rios","São Carlos/Maringá","Ventura","Oriçanga","Emu",OUTRA]
+};
+// nomes escritos de outro jeito na planilha
+const ALIAS = { "quatrimas":"quatrirmas", "santa terezinha":"santa teresinha", "sao carlos e maringa":"sao carlos/maringa", "sao carlos":"sao carlos/maringa", "maringa":"sao carlos/maringa" };
+const OFFICIAL = new Map();
+Object.entries(REGIONAIS).forEach(([reg, list]) => list.forEach(f => { if(f!==OUTRA) OFFICIAL.set(norm(f), { name:f, reg }); }));
+const fazKey = s => { let k = norm(s); k = ALIAS[k] || k; return OFFICIAL.has(k) ? k : "outra"; };
+const fazName = s => { const k = fazKey(s); return k==="outra" ? titleCase(String(s).trim()) + " (fora da lista)" : OFFICIAL.get(k).name; };
+const isValid = r => r && norm(r[2]).includes("controlador") && norm(r[3]) !== "inativada";
+const shortNum = code => code.length > 4 ? code.slice(-4) : code;
+
+function lookup(tok){
+  const t = tok.replace(/\D/g,"");
+  if(!t) return null;
+  const m = t.length >= 8 ? DB.filter(r => r[0] === t) : t.length >= 3 ? DB.filter(r => r[0].endsWith(t)) : [];
+  m.sort((a,b) => (a[4]==="T"?0:1) - (b[4]==="T"?0:1));
+  return { tok:t, rec:m[0]||null, amb:m.length>1 ? m.slice(1) : [] };
+}
+function classify(x){
+  const r = x.rec;
+  if(!r) return { k:"off", txt:"Não está na planilha" };
+  if(isValid(r)) return { k:"ok", txt:"Cobrar" };
+  if(norm(r[3]) === "inativada") return { k:"off", txt:"Inativada" };
+  return { k:"warn", txt:"Outra tecnologia" };
+}
+
+function renderDbInfo(){
+  const t = DB.filter(r=>r[4]==="T").length, i = DB.length - t;
+  $("dbinfo").innerHTML = `Base: <b>${esc(DB_LABEL)}</b><br>${t} tratores · ${i} implementos`;
+}
+function esc(s){ return String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+function fillReg(){
+  $("reg").innerHTML = Object.keys(REGIONAIS).map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join("");
+  $("reg").value = store.get("coa_reg", "Centro");
+  if(!$("reg").value) $("reg").selectedIndex = 0;
+}
+function fillFaz(pref){
+  const cur = pref || $("faz").value;
+  $("faz").innerHTML = REGIONAIS[$("reg").value].map(f => { const k = f===OUTRA ? "outra" : norm(f); return `<option value="${esc(k)}">${esc(f)}</option>`; }).join("");
+  if([...$("faz").options].some(o=>o.value===cur)) $("faz").value = cur;
+}
+function fillOps(){
+  $("opsel").innerHTML = OPS.map(o => `<option value="${esc(o)}">OP. ${esc(o)}</option>`).join("") + `<option value="__outra">Outra operação…</option>`;
+  const s = store.get("coa_op", OPS[1]);
+  if(OPS.includes(s)){ $("opsel").value = s; } else { $("opsel").value = "__outra"; $("op").value = s; }
+  $("op-wrap").hidden = $("opsel").value !== "__outra";
+}
+const opValue = () => $("opsel").value === "__outra" ? $("op").value : $("opsel").value;
+
+function tokens(){ return [...new Set(($("frotas").value.match(/\d+/g)||[]))]; }
+
+function renderChips(){
+  const faz = $("faz").value;
+  $("chips-label").textContent = faz==="outra" ? "Tratores com tecnologia em fazendas fora da lista (clique para adicionar):" : "Tratores com tecnologia nesta fazenda (clique para adicionar):";
+  const list = DB.filter(r => r[4]==="T" && fazKey(r[1])===faz && isValid(r)).map(r=>shortNum(r[0])).sort();
+  const sel = new Set(tokens().map(t => { const x = lookup(t); return x && x.rec ? shortNum(x.rec[0]) : t; }));
+  $("chips").innerHTML = list.length ? list.map(n => `<button type="button" class="chip" aria-pressed="${sel.has(n)}" data-n="${n}">${n}</button>`).join("")
+    : `<span class="hint" style="margin:0">Nenhum trator com Controlador + Sensor cadastrado nesta fazenda.</span>`;
+}
+
+function build(){
+  const res = tokens().map(t => { const x = lookup(t); return { ...x, c: classify(x) }; });
+  const n = k => res.filter(x=>x.c.k===k).length;
+  $("summary").innerHTML = `
+    <div class="stat ok"><b>${n("ok")}</b><span>Cobrar no Zap</span></div>
+    <div class="stat warn"><b>${n("warn")}</b><span>Outra tecnologia</span></div>
+    <div class="stat off"><b>${n("off")}</b><span>Sem cadastro / inativa</span></div>`;
+  const faz = $("faz").value;
+  $("tbl").innerHTML = res.length ? `<table><thead><tr><th>Frota</th><th>Situação</th><th>Tecnologia</th><th>Fazenda</th></tr></thead><tbody>${
+    res.map(x => {
+      const r = x.rec;
+      const other = r && fazKey(r[1]) !== faz ?`<div class="note">Cadastrada em outra fazenda</div>` : "";
+      const amb = x.amb.length ? `<div class="note">Também existe ${x.amb.map(a=>a[0]).join(", ")}</div>` : "";
+      return `<tr><td class="num">${r ? shortNum(r[0]) : esc(x.tok)}<div class="hint" style="margin:0">${r ? r[0] + (r[4]==="I"?" · implemento":"") : ""}</div></td>
+        <td><span class="pill ${x.c.k}">${x.c.txt}</span></td>
+        <td>${r ? esc(r[2]) : "—"}</td><td>${r ? esc(fazName(r[1])) : "—"}${other}${amb}</td></tr>`;
+    }).join("")}</tbody></table>` : `<div class="empty">Rastro todo colorido? Não precisa mandar nada. Se tiver parte cinza, clique nela no mapa e digite aqui a frota que passou.</div>`;
+
+  const valid = res.filter(x=>x.c.k==="ok").map(x=>shortNum(x.rec[0]));
+  const op = opValue().trim().toUpperCase(), setor = $("setor").value.trim().toUpperCase(), tal = $("talhoes").value.trim().toUpperCase();
+  if(!valid.length){ $("preview").innerHTML = `<div class="empty">Nenhuma frota para cobrar. A mensagem aparece aqui quando alguma frota do rastro cinza tiver Controlador + Sensor Ultrassônico.</div>`; msg = ""; return; }
+  const lines = [];
+  lines.push(`*SEGUE STATUS OP. ${op || "—"}*`);
+  const loc = [setor && `SETOR - ${setor}`, tal && `TALHÃO ${tal}`].filter(Boolean).join(" ");
+  if(loc) lines.push(loc);
+  lines.push("");
+  lines.push(`*Frotas que não subiram informação de vazão:*`);
+  lines.push(valid.join(", "));
+  msg = lines.join("\n");
+  $("preview").innerHTML = `<div class="bubble">${esc(msg).replace(/\*([^*\n]+)\*/g,"<b>$1</b>")}</div>`;
+}
+let msg = "";
+
+function saveFields(){
+  store.set("coa_op", opValue());
+  store.set("coa_reg", $("reg").value); store.set("coa_faz", $("faz").value);
+}
+function update(){ saveFields(); renderChips(); build(); }
+
+// eventos
+["op","setor","talhoes","frotas"].forEach(id => $(id).addEventListener("input", update));
+$("opsel").addEventListener("change", () => { $("op-wrap").hidden = $("opsel").value !== "__outra"; if(!$("op-wrap").hidden) $("op").focus(); update(); });
+$("reg").addEventListener("change", () => { fillFaz(); update(); });
+$("faz").addEventListener("change", () => { update(); });
+$("chips").addEventListener("click", e => {
+  const b = e.target.closest(".chip"); if(!b) return;
+  const n = b.dataset.n;
+  let toks = tokens();
+  const has = toks.findIndex(t => { const x = lookup(t); return x && x.rec && shortNum(x.rec[0])===n; });
+  if(has>=0) toks.splice(has,1); else toks.push(n);
+  $("frotas").value = toks.join(", ");
+  update();
+});
+$("clear").addEventListener("click", () => { $("frotas").value = ""; update(); });
+$("copy").addEventListener("click", () => {
+  if(!msg){ $("toast").textContent = "Nada para copiar ainda."; return; }
+  const done = () => { $("toast").textContent = "Mensagem copiada"; setTimeout(()=>$("toast").textContent="",2500); };
+  const fb = () => { const t=$("fallback"); t.hidden=false; t.value=msg; t.select(); $("toast").textContent = "Selecionei o texto: use Ctrl+C."; };
+  try{ navigator.clipboard.writeText(msg).then(done, fb); }catch(e){ fb(); }
+});
+
+// planilha
+$("file").addEventListener("change", async e => {
+  const f = e.target.files[0]; if(!f) return;
+  try{
+    if(!window.XLSX) throw new Error("leitor de planilha não carregou");
+    const wb = XLSX.read(await f.arrayBuffer());
+    const rows = [];
+    wb.SheetNames.forEach(sn => {
+      const tipo = norm(sn).includes("implement") ? "I" : "T";
+      const data = XLSX.utils.sheet_to_json(wb.Sheets[sn], { defval:"" });
+      data.forEach(o => {
+        const g = key => { const k = Object.keys(o).find(c => norm(c).includes(key)); return k ? String(o[k]).trim() : ""; };
+        const code = g("codigo").replace(/\D/g,"");
+        if(code) rows.push([code, g("fazenda"), g("tecnologia"), g("status"), tipo]);
+      });
+    });
+    if(!rows.length) throw new Error("não achei a coluna 'Codigo Equipamento'");
+    DB = rows; DB_LABEL = `${f.name} (carregada em ${new Date().toLocaleDateString("pt-BR")})`;
+    store.set("coa_db", { rows, label: DB_LABEL });
+    $("filemsg").textContent = `Planilha carregada: ${rows.length} máquinas.`;
+    renderDbInfo(); fillFaz(); update();
+  }catch(err){ $("filemsg").textContent = "Não consegui ler o arquivo: " + err.message + ". Confira se é a planilha de máquinas em Excel."; }
+});
+$("reset").addEventListener("click", () => {
+  store.del("coa_db"); DB = BASE; DB_LABEL = BASE_LABEL;
+  $("filemsg").textContent = "Voltei para a planilha original."; renderDbInfo(); fillFaz(); update();
+});
+
+// início: exemplo com a mensagem de hoje
+renderDbInfo(); fillOps(); fillReg(); fillFaz(store.get("coa_faz", "entre rios"));
+$("setor").value = "2"; $("talhoes").value = "206, 205, 204";
+$("frotas").value = "1900, 3752, 1234";
+update();
+</script>
+
+<script>if("serviceWorker" in navigator){addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));}</script>
+</body>
+</html>
